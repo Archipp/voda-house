@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Switch, Text, ScrollView, StyleSheet, Image } from 'react-native';
 import firebase from 'firebase/compat';
 import { db } from '../config';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, update } from 'firebase/database';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const PriseScreen = () => {
@@ -10,27 +10,32 @@ const PriseScreen = () => {
   const [priseState_2, setPriseState_2] = useState(false);
   const [courant, setCourant] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [fridgeEnergy, setFridgeEnergy] = useState("");
+  const [tvEnergy, setTvEnergy] = useState("");
 
   useEffect(() => {
-    const courantRef = firebase.database().ref('priseState/etat_courant');
-    courantRef.on('value', (snapshot) => {
+    const courantRef = ref(db, 'PriseState/EtatCourant');
+    onValue(courantRef, (snapshot) => { 
       const etatCourant = snapshot.val();
       setCourant(etatCourant);
     });
 
-    const priseStateRef = firebase.database().ref('priseState');
-    priseStateRef.on('value', (snapshot) => {
+    const priseStateRef = ref(db, 'PriseState');
+      onValue(priseStateRef, (snapshot) => {
       const data = snapshot.val();
       setPriseState_1(data.prise_1 || false);
       setPriseState_2(data.prise_2 || false);
+      setFridgeEnergy(`${data.Refrigerateur_energy || 0} kW`);
+      setTvEnergy(`${data.Television_energy || 0} kW`);
     });
+    
   }, []);
 
   const togglePriseState = (num, currentState) => {
     if (!courant) return;
     const newState = !currentState;
 
-    firebase.database().ref('priseState').update({
+    update(ref(db,'PriseState'), {
       [`prise_${num}`]: newState,
     });
   };
@@ -50,14 +55,15 @@ const PriseScreen = () => {
     chauffe_eau: require('../assets/icons/water-heater.png')
   };
   
-  const renderBox = (imageName, isSwitchEnabled, switchValue, num, label) => {
-    const iconSource = iconPaths[imageName] || require('../assets/icons/television.png'); // Utilisez une icône par défaut si non trouvée
+  const renderBox = (imageName, isSwitchEnabled, switchValue, num, label,energy) => {
+    const iconSource = iconPaths[imageName] || require('../assets/icons/television.png'); 
     return (
       <View style={styles.box}>
         <Image
           source={iconSource}
           style={styles.icon}
         />
+        <Text style={styles.energyText}>{energy}</Text>
         <Switch
           trackColor={{ false: "#767577", true: "#E60000" }}
           thumbColor={isEnabled ? "gray" : "#f4f3f4"} 
@@ -78,33 +84,33 @@ const PriseScreen = () => {
     <View style={styles.container}>
       <Text style={styles.categoryTitle}>Salon</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {renderBox("fridge", true, priseState_1, 1, "Réfrigérateur")}
-        {renderBox("television", true, priseState_2, 2, "Télévision")}
-        {renderBox("airConditioning", false, false, null, "Climatiseur")}
-        {renderBox("computer", false, false, null, "Ordinateur")}
-        {renderBox("fan", false, false, null, "Ventilateur")}
+        {renderBox("fridge", true, priseState_1, 1, "Réfrigérateur", fridgeEnergy)}
+        {renderBox("television", true, priseState_2, 2, "Télévision", tvEnergy)}
+        {renderBox("airConditioning", false, false, null, "Climatiseur", "-")}
+        {renderBox("computer", false, false, null, "Ordinateur", "-")}
+        {renderBox("fan", false, false, null, "Ventilateur", "-")}
       </ScrollView>
       <View style={styles.separator} />
       <Text style={styles.categoryTitle}>Chambre</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {renderBox("airConditioning", false, false, null, "Climatiseur")}
-        {renderBox("television", false, false, null, "Télévision")}
-        {renderBox("fan", false, false, null, "Ventilateur")}
-        {renderBox("computer", false, false, null, "Ordinateur")}
-        {renderBox("printer", false, false, null, "Imprimante")}
+        {renderBox("airConditioning", false, false, null, "Climatiseur", "-")}
+        {renderBox("television", false, false, null, "Télévision", "-")}
+        {renderBox("fan", false, false, null, "Ventilateur", "-")}
+        {renderBox("computer", false, false, null, "Ordinateur", "-")}
+        {renderBox("printer", false, false, null, "Imprimante", "-")}
       </ScrollView>
       <View style={styles.separator} />
       <Text style={styles.categoryTitle}>Cuisine</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {renderBox("oven", false, false, null, "Four")}
-        {renderBox("microwave", false, false, null, "Micro-onde")}
-        {renderBox("freezer", false, false, null, "Congelateur")}
-        {renderBox("coffee_machine", false, false, null, "Cafetière")}
+        {renderBox("oven", false, false, null, "Four", "-")}
+        {renderBox("microwave", false, false, null, "Micro-onde", "-")}
+        {renderBox("freezer", false, false, null, "Congelateur", "-")}
+        {renderBox("coffee_machine", false, false, null, "Cafetière", "-")}
       </ScrollView>
       <View style={styles.separator} />
       <Text style={styles.categoryTitle}>Salle de bain</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-        {renderBox("chauffe_eau", false, false, null, "Chambre 1")}
+        {renderBox("chauffe_eau", false, false, null, "Chambre 1", "-")}
       </ScrollView>
     </View>
     </ScrollView>
@@ -130,28 +136,43 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   box: {
-    width: 120,
-    height: 120,
+    width: 130,
+    height: 130,
     backgroundColor: '#E4E6EA',
     borderRadius: 10,
     padding: 10,
     marginRight: 15,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    position: 'relative',
   },
   icon: {
-    alignSelf: 'flex-start',
     width: 30,
     height: 30,
+    position: 'absolute',
+    top: 10,
+    left: 10,
   },
   switch: {
-    alignSelf: 'flex-end',
-    color: "#E60000",
+    alignSelf: "flex-end",
+  },
+  energyText: {
+    position: 'absolute',
+    top: 60,
+    left: 10,
+    right: 10,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+    color: 'red'
   },
   label: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
     textAlign: 'center',
-    color: '#000',
-    fontWeight:"bold",
+    fontWeight: 'bold',
+    color: '#000'
   },
   separator: {
     height: 2,

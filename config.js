@@ -2,8 +2,8 @@ import firebase from 'firebase/compat/app'
 import { getDatabase } from 'firebase/database'
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCZWQZvpna_XIhtTzjTuf-BUwLO4M7BM2E",
-    databaseURL: "https://voda-house-10049-default-rtdb.firebaseio.com/",
+    apiKey: "AIzaSyBnBqgkIAVpPwUX_rPKNpZ3G367g07IBbw",
+    databaseURL: "https://voda-house-9ed6d-default-rtdb.firebaseio.com/",
   };
   
   const app = firebase.initializeApp(firebaseConfig);

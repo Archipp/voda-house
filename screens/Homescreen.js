@@ -1,25 +1,61 @@
 import React, {useEffect, useState} from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Appbar, Card, Avatar, Paragraph, Provider } from 'react-native-paper';
-import firebase from 'firebase/compat';
 import { db } from '../config';
 import { ref, onValue } from 'firebase/database';
 
 const HomeScreen = () => {
-  // Valeurs statiques pour démonstration
-  const energieAccumuleeStatique = 12.3456; // Exemple d'énergie accumulée statique
-  const estimationCoutStatique = 1234; // Exemple d'estimation du coût statique
-  const [courant, setCourant] = useState(false);
+  const [courant, setCourant] = useState();
+  const [energieLampeExterne, setEnergieLampeExterne] = useState(0);
+  const [energieLampeChambre, setEnergieLampeChambre] = useState(0);
+  const [energieRefrigerateur, setEnergieRefrigerateur] = useState(0);
+  const [energieTelevision, setEnergieTelevision] = useState(0);
+
 
   useEffect(() => {
-    const courantRef = firebase.database().ref('priseState/etat_courant');
-    courantRef.on('value', (snapshot) => {
+    const courantRef = ref(db, 'PriseState/EtatCourant');
+    onValue(courantRef, (snapshot) => {
       const etatCourant = snapshot.val();
       setCourant(etatCourant);
     });
   }, []);
 
+  useEffect(() => {
+    const lampeExterneRef = ref(db, 'LampExterne/energy');
+    const lampeChambreRef = ref(db, 'LampChambre/energy');
+    const refrigerateurRef = ref(db, 'PriseState/Refrigerateur_energy');
+    const televisionRef = ref(db, 'PriseState/Television_energy');
+  
+    const unsubscribeLampeExterne = onValue(lampeExterneRef, snapshot => {
+      const energy = snapshot.val() || 0;
+      setEnergieLampeExterne(energy);
+    });
+  
+    const unsubscribeLampeChambre = onValue(lampeChambreRef, snapshot => {
+      const energy = snapshot.val() || 0;
+      setEnergieLampeChambre(energy);
+    });
+  
+    const unsubscribeRefrigerateur = onValue(refrigerateurRef, snapshot => {
+      const energy = snapshot.val() || 0;
+      setEnergieRefrigerateur(energy);
+    });
+  
+    const unsubscribeTelevision = onValue(televisionRef, snapshot => {
+      const energy = snapshot.val() || 0;
+      setEnergieTelevision(energy);
+    });
+  
+    return () => {
+      unsubscribeLampeExterne();
+      unsubscribeLampeChambre();
+      unsubscribeRefrigerateur();
+      unsubscribeTelevision();
+    };
+  }, []);
 
+  const energieAccumuleeStatique = energieLampeExterne + energieLampeChambre + energieRefrigerateur + energieTelevision;
+  const estimationCoutStatique = energieAccumuleeStatique * 100;
   return (
     <Provider>
       <View style={styles.container}>
@@ -72,29 +108,22 @@ const HomeScreen = () => {
             <Card.Content>
 
             <View style={styles.consumptionRow}>
-              <Text style={styles.consumptionTextLeft}>LAMPES EXTERNES:</Text>
-              <Text style={styles.consumptionTextRight}>1.00 kWh</Text>
-            </View>
+  <Text style={styles.consumptionTextLeft}>LAMPE EXTERIEURE:</Text>
+  <Text style={styles.consumptionTextRight}>{energieLampeExterne.toFixed(2)} kWh</Text>
+</View>
+<View style={styles.consumptionRow}>
+  <Text style={styles.consumptionTextLeft}>LAMPE CHAMBRE 1 :</Text>
+  <Text style={styles.consumptionTextRight}>{energieLampeChambre.toFixed(2)} kWh</Text>
+</View>
+<View style={styles.consumptionRow}>
+  <Text style={styles.consumptionTextLeft}>RÉFRIGÉRATEUR :</Text> 
+  <Text style={styles.consumptionTextRight}>{energieRefrigerateur.toFixed(2)} kWh</Text>
+</View>
+<View style={styles.consumptionRow}>
+  <Text style={styles.consumptionTextLeft}>TÉLÉVISION :</Text>
+  <Text style={styles.consumptionTextRight}>{energieTelevision.toFixed(2)} kWh</Text>
+</View>
 
-            <View style={styles.consumptionRow}>
-              <Text style={styles.consumptionTextLeft}>PRISES SALON:</Text>
-              <Text style={styles.consumptionTextRight}>4.00 kWh </Text>
-            </View>
-
-            <View style={styles.consumptionRow}>
-              <Text style={styles.consumptionTextLeft}>PRISES CUISINE:</Text>
-              <Text style={styles.consumptionTextRight}>5.00 kWh </Text>
-            </View>
-
-            <View style={styles.consumptionRow}>
-              <Text style={styles.consumptionTextLeft}>PRISES CHAMBRE:</Text> 
-              <Text style={styles.consumptionTextRight}>0.03 kWh</Text>
-            </View>
-
-            <View style={styles.consumptionRow}>
-              <Text style={styles.consumptionTextLeft}>PRISES SALLE DE BAIN:</Text> 
-              <Text style={styles.consumptionTextRight}>1.00 kWh</Text>
-            </View>
             </Card.Content>
           </Card>
         </ScrollView>
@@ -180,7 +209,7 @@ const styles = StyleSheet.create({
   },
   statusRow: {
     flexDirection: 'row',
-    alignItems: 'center', // Centre les éléments verticalement
+    alignItems: 'center', 
   },
 });
 
